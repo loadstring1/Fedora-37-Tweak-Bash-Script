@@ -1,5 +1,6 @@
 #!/bin/bash
 clear
+echo "script version: 1.1"
 echo "This script supports only fedora 37"
 echo "You are free to view this script's source code"
 echo "Script features:"
@@ -17,7 +18,7 @@ if [[ "$answer" != "y" ]]; then
 fi
 if [ "$EUID" -ne 0 ]; then
   echo "You will be asked for your password because the script was not ran as root"
-  echo "Attempting to re-run the script as root"
+  echo "Attempting to re-run the script as root (may not work if user is not inside sudoers file)"
   if [[ -f "./f37tweaks.sh" ]] then
     sudo bash ./f37tweaks.sh
   else
@@ -28,8 +29,10 @@ if [ "$EUID" -ne 0 ]; then
 fi
 echo "Checking for modified config files"
 config="./configfiles"
-if [[ -d "$config" ]] && [[ -f "$config/system.conf" ]] && [[ -f "$config/user.conf" ]] && [[ -f "$config/dnf.conf" ]] && [[ -f "$config/originaldnf.conf" ]] then
-  echo "modified config files are ready"
+modified="$config/modified"
+original="$config/original"
+if [[ -d "$config" ]] && [[ -d "$modified" ]] && [[ -d "$original" ]] && [[ -f "$modified/system.conf" ]] && [[ -f "$modified/user.conf" ]] && [[ -f "$modified/dnf.conf" ]] && [[ -f "$original/dnf.conf" ]] && [[ -f "$original/system.conf" ]] && [[ -f "$original/user.conf" ]] then
+  echo "modified config files and original config files are ready"
   echo "please do not rename config files"
   echo "please do not put the config files into different directory while the script is running"
   echo "please do not put the script into different directory while its running"
@@ -115,8 +118,8 @@ function tweakshutdown () {
   echo "Replacing systemd config files with modified systemd config files"
   rm -f /etc/systemd/system.conf
   rm -f /etc/systemd/user.conf
-  cp $config/system.conf /etc/systemd
-  cp $config/user.conf /etc/systemd
+  cp $modified/system.conf /etc/systemd
+  cp $modified/user.conf /etc/systemd
   mayneedreboot=true
   echo "successfully replaced systemd config files with modified systemd config files"
   mainmenu
@@ -127,19 +130,25 @@ function revertshutdown () {
   rm -f /etc/systemd/user.conf
   mayneedreboot=true
   dnf reinstall systemd -y
+  if [[ ! -f "/etc/systemd/system.conf" ]] || [[ ! -f "/etc/systemd/user.conf" ]] then
+    echo "systemd config files not found replacing with original ones from script directory"
+    cp $original/system.conf /etc/systemd/
+    cp $original/user.conf /etc/systemd/
+    echo "successfully copied systemd config files from script directory to /etc/systemd"
+  fi
   changesmenu
 }
 function fasterdnf () {
   echo "Replacing dnf configuration with modified dnf configuration"
   rm -f /etc/dnf/dnf.conf
-  cp $config/dnf.conf /etc/dnf
+  cp $modified/dnf.conf /etc/dnf
   echo "successfully replaced dnf config with modified dnf config"
   mainmenu
 }
 function revertdnf () {
   echo "current dnf configuration will be replaced with default dnf configuration"
   rm -f /etc/dnf/dnf.conf
-  cp $config/originaldnf.conf /etc/dnf/dnf.conf
+  cp $original/dnf.conf /etc/dnf
   echo "successfully replaced dnf config with default dnf config"
   changesmenu
 }
@@ -178,7 +187,9 @@ function revertchanges () {
   echo "3: safely exit the script"
   read answer
   if ! [[ $answer =~ ^[0-9]+$ ]]; then
-    mainmenu
+    clear
+    revertchanges
+    exit
     return
   fi
   clear
@@ -195,7 +206,9 @@ function main () {
   echo "6: safely exit the script"
   read answer
   if ! [[ $answer =~ ^[0-9]+$ ]]; then
-    mainmenu
+    clear
+    main
+    exit
     return
   fi
   clear
