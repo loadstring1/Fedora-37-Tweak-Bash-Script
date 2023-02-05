@@ -1,7 +1,7 @@
 #!/bin/bash
 scriptdir=$1
 movedir=$2
-rsync "$movedir" "$scriptdir"
+cp "$movedir/*" "$scriptdir"
 exit
 rm -rf "$scriptdir/UpdatedScript"
 cd "$scriptdir"
