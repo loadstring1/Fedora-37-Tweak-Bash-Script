@@ -1,7 +1,7 @@
 #!/bin/bash
 scriptdir=$1
 movedir=$2
-cp "$movedir/"* "$scriptdir"
+cp -r "$movedir/"* "$scriptdir"
 exit
 rm -rf "$scriptdir/UpdatedScript"
 cd "$scriptdir"
